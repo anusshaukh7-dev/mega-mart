@@ -4,78 +4,113 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mega Mart Admin Panel</title>
+<meta name="theme-color" content="#111827">
+<title>Mega Mart | Admin Panel</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f1f5f9;color:#172033;font-family:Arial,sans-serif}
-header{background:#111827;color:white;padding:20px}
+header{background:#111827;color:white;padding:22px 16px}
 header h1{margin:0;font-size:25px}
+header p{margin:8px 0 0;color:#cbd5e1}
 main{max-width:850px;margin:22px auto;padding:14px}
 .card{background:white;padding:18px;margin-bottom:18px;border-radius:14px;box-shadow:0 3px 12px #0001}
+h2{margin-top:0}
 input,textarea,button{width:100%;padding:12px;margin:7px 0;border-radius:8px;border:1px solid #cbd5e1;font-size:15px}
+textarea{min-height:90px}
 button{background:#f59e0b;color:#111827;border:0;font-weight:bold;cursor:pointer}
-.danger{background:#dc2626;color:white}
 .secondary{background:#e2e8f0}
+.danger{background:#dc2626;color:white}
+.hidden{display:none!important}
 .product{border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin:12px 0;overflow-wrap:anywhere}
-.product img{width:100%;max-width:180px;height:140px;object-fit:contain}
-.hidden{display:none}
+.product img{display:block;width:100%;max-width:180px;height:140px;object-fit:contain}
 small{color:#64748b}
+#message{overflow-wrap:anywhere;line-height:1.5}
+@media(min-width:600px){main{padding:20px}}
 </style>
 </head>
 <body>
 <header>
-  <h1>MEGA MART — ADMIN</h1>
-  <p>Manage your online store</p>
+<h1>MEGA MART — ADMIN</h1>
+<p>Manage your online store</p>
 </header>
 
 <main>
-  <section class="card">
-    <h2>Admin Login</h2>
-    <input id="email" type="email" placeholder="Admin email">
-    <input id="password" type="password" placeholder="Admin password">
-    <button id="loginBtn" onclick="login()">Login</button>
-    <button id="logoutBtn" class="secondary hidden" onclick="logout()">Logout</button>
-    <p id="message">Login with your existing Supabase admin account.</p>
-  </section>
+<section class="card" id="authCard">
+<h2 id="authTitle">Admin Login</h2>
 
-  <section id="dashboard" class="hidden">
-    <div class="card">
-      <h2 id="formTitle">Add New Product</h2>
-      <input id="name" placeholder="Product name">
-      <input id="category" placeholder="Category (Clothes, Watches, Beauty...)">
-      <input id="price" type="number" min="0" step="0.01" placeholder="Price in PKR">
-      <input id="image" type="url" placeholder="Product image URL">
-      <textarea id="description" placeholder="Product description"></textarea>
-      <input id="stock" type="number" min="0" placeholder="Stock quantity">
-      <input id="delivery" type="number" min="0" step="0.01" placeholder="Delivery charges in PKR">
-      <button onclick="saveProduct()">Save Product</button>
-      <button class="secondary" onclick="clearForm()">Clear Form</button>
-      <small>Use a direct image URL for each product photo.</small>
-    </div>
+<div id="loginForm">
+<input id="email" type="email" placeholder="Admin email" autocomplete="username">
+<input id="password" type="password" placeholder="Admin password" autocomplete="current-password">
+<button id="loginBtn" onclick="login()">Login</button>
+<button class="secondary" onclick="forgotPassword()">Forgot Password?</button>
+</div>
 
-    <div class="card">
-      <h2>Products</h2>
-      <button class="secondary" onclick="loadProducts()">Refresh Products</button>
-      <div id="products"></div>
-    </div>
-  </section>
+<div id="newPasswordForm" class="hidden">
+<p>Enter your new password below.</p>
+<input id="newPassword" type="password" placeholder="New password (minimum 8 characters)" autocomplete="new-password">
+<input id="confirmPassword" type="password" placeholder="Confirm new password" autocomplete="new-password">
+<button onclick="updatePassword()">Save New Password</button>
+</div>
+
+<button id="logoutBtn" class="secondary hidden" onclick="logout()">Logout</button>
+<p id="message" role="status">Log in with your existing Supabase admin account.</p>
+</section>
+
+<section id="dashboard" class="hidden">
+<div class="card">
+<h2 id="formTitle">Add New Product</h2>
+<input id="name" placeholder="Product name">
+<input id="category" placeholder="Category (Clothes, Watches, Beauty...)">
+<input id="price" type="number" min="0" step="0.01" placeholder="Price in PKR">
+<input id="image" type="url" placeholder="Direct product image URL">
+<textarea id="description" placeholder="Product description"></textarea>
+<input id="stock" type="number" min="0" step="1" placeholder="Stock quantity">
+<input id="delivery" type="number" min="0" step="0.01" placeholder="Delivery charges in PKR">
+<button onclick="saveProduct()">Save Product</button>
+<button class="secondary" onclick="clearForm()">Clear Form</button>
+<small>Use a direct image URL for each product photo.</small>
+</div>
+
+<div class="card">
+<h2>Products</h2>
+<button class="secondary" onclick="loadProducts()">Refresh Products</button>
+<div id="products">Loading products...</div>
+</div>
+</section>
 </main>
 
 <script>
-const SUPABASE_URL = "lieyqxmbomnsovdnpoxu";
+const SUPABASE_URL = "https://lieyqxmbomnsovdnpoxu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_TExVflHYAi2uhCbDjGpuBA_L4cCS4CA";
+const SITE_URL = "https://anusshaukh7-dev.github.io/mega-mart/";
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let editingId = null;
+let recoveryMode = false;
 
 function message(text) {
   document.getElementById("message").textContent = text;
 }
 
+function showRecoveryForm() {
+  recoveryMode = true;
+  document.getElementById("authTitle").textContent = "Set New Password";
+  document.getElementById("loginForm").classList.add("hidden");
+  document.getElementById("newPasswordForm").classList.remove("hidden");
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("logoutBtn").classList.add("hidden");
+  message("Enter and confirm your new password.");
+}
+
 async function login() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
+
+  if (!email || !password) {
+    message("Enter your admin email and password.");
+    return;
+  }
 
   const { error } = await db.auth.signInWithPassword({ email, password });
 
@@ -84,27 +119,110 @@ async function login() {
     return;
   }
 
+  recoveryMode = false;
   message("Login successful.");
   await checkSession();
 }
 
-async function logout() {
+async function forgotPassword() {
+  const email = document.getElementById("email").value.trim();
+
+  if (!email) {
+    message("Enter your admin email first.");
+    return;
+  }
+
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: SITE_URL + "admin.html"
+  });
+
+  if (error) {
+    message("Reset error: " + error.message);
+    return;
+  }
+
+  message("If the account exists, a reset email will be sent. Check Inbox and Spam.");
+}
+
+async function updatePassword() {
+  const password = document.getElementById("newPassword").value;
+  const confirm = document.getElementById("confirmPassword").value;
+
+  if (password.length < 8) {
+    message("Password must contain at least 8 characters.");
+    return;
+  }
+
+  if (password !== confirm) {
+    message("Passwords do not match.");
+    return;
+  }
+
+  const { data } = await db.auth.getSession();
+
+  if (!data.session || !recoveryMode) {
+    message("Your reset session is missing or expired. Request a new reset email.");
+    return;
+  }
+
+  const { error } = await db.auth.updateUser({ password });
+
+  if (error) {
+    message("Password update error: " + error.message);
+    return;
+  }
+
   await db.auth.signOut();
+  recoveryMode = false;
+
+  document.getElementById("newPassword").value = "";
+  document.getElementById("confirmPassword").value = "";
+  document.getElementById("authTitle").textContent = "Admin Login";
+  document.getElementById("newPasswordForm").classList.add("hidden");
+  document.getElementById("loginForm").classList.remove("hidden");
   document.getElementById("dashboard").classList.add("hidden");
   document.getElementById("logoutBtn").classList.add("hidden");
-  document.getElementById("loginBtn").classList.remove("hidden");
+
+  message("Password changed successfully. Log in with your new password.");
+}
+
+async function logout() {
+  const { error } = await db.auth.signOut();
+
+  if (error) {
+    message("Logout error: " + error.message);
+    return;
+  }
+
+  recoveryMode = false;
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("logoutBtn").classList.add("hidden");
+  document.getElementById("loginForm").classList.remove("hidden");
+  document.getElementById("authTitle").textContent = "Admin Login";
   message("You have logged out.");
 }
 
 async function checkSession() {
-  const { data } = await db.auth.getSession();
+  const { data, error } = await db.auth.getSession();
+
+  if (error) {
+    message("Session error: " + error.message);
+    return;
+  }
+
   const loggedIn = !!data.session;
 
   document.getElementById("dashboard").classList.toggle("hidden", !loggedIn);
   document.getElementById("logoutBtn").classList.toggle("hidden", !loggedIn);
-  document.getElementById("loginBtn").classList.toggle("hidden", loggedIn);
 
-  if (loggedIn) await loadProducts();
+  if (loggedIn && !recoveryMode) {
+    document.getElementById("loginForm").classList.add("hidden");
+    document.getElementById("authTitle").textContent = "Admin Account";
+    await loadProducts();
+  } else if (!recoveryMode) {
+    document.getElementById("loginForm").classList.remove("hidden");
+    document.getElementById("authTitle").textContent = "Admin Login";
+  }
 }
 
 function clearForm() {
@@ -116,32 +234,58 @@ function clearForm() {
 
 async function saveProduct() {
   const { data: sessionData } = await db.auth.getSession();
+
   if (!sessionData.session) {
     message("Please log in first.");
     return;
   }
 
   const name = document.getElementById("name").value.trim();
-  const price = Number(document.getElementById("price").value);
+  const priceText = document.getElementById("price").value;
+  const price = Number(priceText);
+  const stockText = document.getElementById("stock").value;
+  const stock = stockText === "" ? 0 : Number(stockText);
+  const deliveryText = document.getElementById("delivery").value;
+  const delivery = deliveryText === "" ? 0 : Number(deliveryText);
+  const image = document.getElementById("image").value.trim();
 
-  if (!name || document.getElementById("price").value === "" ||
-      !Number.isFinite(price) || price < 0) {
-    message("Enter a product name and a valid price.");
+  if (!name || priceText === "" || !Number.isFinite(price) || price < 0) {
+    message("Enter a product name and valid price.");
     return;
+  }
+
+  if (!Number.isInteger(stock) || stock < 0 ||
+      !Number.isFinite(delivery) || delivery < 0) {
+    message("Enter valid stock and delivery charges.");
+    return;
+  }
+
+  if (image) {
+    try {
+      const url = new URL(image);
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        message("Enter a valid product image URL.");
+        return;
+      }
+    } catch {
+      message("Enter a valid product image URL.");
+      return;
+    }
   }
 
   const product = {
     name,
     category: document.getElementById("category").value.trim() || "General",
     price,
-    image_url: document.getElementById("image").value.trim() || null,
+    image_url: image || null,
     description: document.getElementById("description").value.trim(),
-    stock: Math.max(0, Number(document.getElementById("stock").value) || 0),
-    delivery_charges: Math.max(0, Number(document.getElementById("delivery").value) || 0),
+    stock,
+    delivery_charges: delivery,
     active: true
   };
 
   let result;
+
   if (editingId !== null) {
     result = await db.from("products").update(product).eq("id", editingId);
   } else {
@@ -172,9 +316,9 @@ async function loadProducts() {
     return;
   }
 
-  box.innerHTML = "";
+  box.replaceChildren();
 
-  if (!data.length) {
+  if (!data || data.length === 0) {
     box.textContent = "No products found. Add your first product above.";
     return;
   }
@@ -222,10 +366,14 @@ async function loadProducts() {
     const del = document.createElement("button");
     del.textContent = "Delete Product";
     del.className = "danger";
+
     del.onclick = async () => {
       if (!confirm("Delete " + (p.name || "this product") + "?")) return;
+
       const { error: deleteError } = await db
-        .from("products").delete().eq("id", p.id);
+        .from("products")
+        .delete()
+        .eq("id", p.id);
 
       if (deleteError) {
         message("Delete error: " + deleteError.message);
@@ -234,16 +382,37 @@ async function loadProducts() {
         await loadProducts();
       }
     };
+
     item.appendChild(del);
     box.appendChild(item);
   });
 }
 
-db.auth.onAuthStateChange(() => {
-  setTimeout(checkSession, 0);
+db.auth.onAuthStateChange((event, session) => {
+  if (event === "PASSWORD_RECOVERY") {
+    recoveryMode = true;
+    showRecoveryForm();
+  } else if (event === "SIGNED_OUT") {
+    recoveryMode = false;
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("logoutBtn").classList.add("hidden");
+  } else if (event === "SIGNED_IN" && !recoveryMode) {
+    setTimeout(() => checkSession(), 0);
+  }
 });
 
-checkSession();
+async function initialize() {
+  const { data } = await db.auth.getSession();
+
+  if (data.session && window.location.hash.includes("type=recovery")) {
+    showRecoveryForm();
+    return;
+  }
+
+  await checkSession();
+}
+
+initialize();
 </script>
 </body>
 </html>
